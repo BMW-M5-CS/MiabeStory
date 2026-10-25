@@ -1,0 +1,6 @@
+{
+  "name": "miabeStory",
+  "description": "Plateforme numérique dédiée à la découverte touristique, à la mémoire historique et aux récits culturels du Togo enrichie par un guide IA Gemma.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
