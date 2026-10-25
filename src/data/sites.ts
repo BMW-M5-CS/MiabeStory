@@ -77,6 +77,10 @@ export interface HeritageSite {
   // 6. Audio
   audioNarrationSnippet: string;
   audioDurationMinutes: number;
+
+  // 7. Pratiques & Itinéraire
+  culturalEtiquette?: string;
+  distanceFromLome?: string;
 }
 
 export const INITIAL_SITES: HeritageSite[] = [
@@ -158,7 +162,9 @@ export const INITIAL_SITES: HeritageSite[] = [
       }
     ],
     audioNarrationSnippet: 'Écoutez le souffle du vent entre les greniers coniques du Koutammakou. Vous êtes au nord du Togo, dans un territoire où chaque maison est un corps vivant façonné par la terre...',
-    audioDurationMinutes: 3.5
+    audioDurationMinutes: 3.5,
+    culturalEtiquette: 'Respecter scrupuleusement les autels ancestraux coniques (Oyinkwenta) placés devant les maisons. Ne jamais pénétrer dans une Takienta sans l’invitation expresse du chef de famille. Demander l’accord avant toute prise de vue.',
+    distanceFromLome: '460 km de Lomé (~7h30 via Kara et Kandé)'
   },
   {
     id: 'maison-esclaves-agbodrafo',
@@ -229,7 +235,9 @@ export const INITIAL_SITES: HeritageSite[] = [
       }
     ],
     audioNarrationSnippet: 'Fermez les yeux et écoutez la mer qui bat contre la côte d’Agbodrafo. Ici, sous les planches d’une maison en apparence paisible, l’histoire a gravé son épreuve la plus lourde...',
-    audioDurationMinutes: 4.0
+    audioDurationMinutes: 4.0,
+    culturalEtiquette: 'Lieu mémoriel sacré et solennel. Observer le silence et la décence dans le cachot sous plancher. Tenue correcte exigée.',
+    distanceFromLome: '30 km de Lomé (~40 min par la route côtière RN2)'
   },
   {
     id: 'cascade-kpime-mont-agou',
@@ -299,7 +307,9 @@ export const INITIAL_SITES: HeritageSite[] = [
       }
     ],
     audioNarrationSnippet: 'Respirez la fraîcheur des feuilles de bananier humides. Écoutez le jaillissement puissant de la cascade de Kpimé au cœur des montagnes verdoyantes de Kpalimé...',
-    audioDurationMinutes: 3.0
+    audioDurationMinutes: 3.0,
+    culturalEtiquette: 'Préserver la propreté des bassins naturels. Éviter les baignades lors des fortes crues et respecter les zones de libations coutumières des prêtresses de l’eau.',
+    distanceFromLome: '120 km de Lomé (~2h15 par la route bitumée de Kpalimé)'
   },
   {
     id: 'togoville-foret-sacree',
@@ -370,7 +380,9 @@ export const INITIAL_SITES: HeritageSite[] = [
       }
     ],
     audioNarrationSnippet: 'Le clapotis de l’eau contre la coque de la pirogue vous accompagne. Vous voguez sur le lac Togo en direction de la rive nord, là où l’histoire moderne a pris racine...',
-    audioDurationMinutes: 3.8
+    audioDurationMinutes: 3.8,
+    culturalEtiquette: 'L’accès à la forêt sacrée est strictement réglementé et interdit aux profanes non accompagnés d’un dignitaire. Se déchausser devant certains sanctuaires vodous indiqués par le guide.',
+    distanceFromLome: '45 km de Lomé (traversée en pirogue depuis Agbodrafo)'
   },
   {
     id: 'fourneaux-fer-bassar',
@@ -440,7 +452,9 @@ export const INITIAL_SITES: HeritageSite[] = [
       }
     ],
     audioNarrationSnippet: 'Entendez le choc cadencé du marteau sur l’enclume. À Bassar, le feu a façonné le fer et la mémoire des hommes depuis plus de vingt siècles...',
-    audioDurationMinutes: 3.2
+    audioDurationMinutes: 3.2,
+    culturalEtiquette: 'Ne pas déplacer les fragments de scories métallurgiques séculaires. Saluer respectueusement les forgerons dépositaires du feu rituel.',
+    distanceFromLome: '390 km de Lomé (~6h via Sokodé et la RN19)'
   },
   {
     id: 'grottes-greniers-nok',
@@ -510,7 +524,9 @@ export const INITIAL_SITES: HeritageSite[] = [
       }
     ],
     audioNarrationSnippet: 'Le vent siffle contre la paroi rocheuse des falaises de Tandjouaré. Regardez bien sous le surplomb : plus de cent greniers de terre se dissimulent dans l’ombre depuis des siècles...',
-    audioDurationMinutes: 3.5
+    audioDurationMinutes: 3.5,
+    culturalEtiquette: 'Chaussures adhérentes indispensables. Ne pas toucher les parois fragiles des greniers en banco centenaires suspendus sur la corniche rocheuse.',
+    distanceFromLome: '620 km de Lomé (~10h de route via Dapaong et Tandjouaré)'
   },
   {
     id: 'monument-independance-palais-lome',
@@ -580,7 +596,81 @@ export const INITIAL_SITES: HeritageSite[] = [
       }
     ],
     audioNarrationSnippet: 'La rumeur joyeuse de Lomé s’élève autour de la place de l’Indépendance. Devant vous, la pierre sculptée s’ouvre vers le ciel, commémorant le jour sacré du 27 avril 1960...',
-    audioDurationMinutes: 3.2
+    audioDurationMinutes: 3.2,
+    culturalEtiquette: 'Site civique solennel. Respecter les pelouses et ne pas grimper sur la structure en marbre.',
+    distanceFromLome: 'Au cœur de Lomé (0 km)'
+  },
+  {
+    id: 'faille-aledjo-reserve',
+    name: 'La Faille d’Alédjo et la Forêt d’Alédjo',
+    slug: 'faille-aledjo-reserve',
+    subtitle: 'La trouée mythique de l’Atakora et le col des caravaniers Tem',
+    region: 'Centrale',
+    prefecture: 'Assoli & Tchaoudjo',
+    locality: 'Alédjo-Kadara (Massif de l’Atakora)',
+    coordinates: {
+      lat: 9.2550,
+      lng: 1.2050
+    },
+    category: 'naturel',
+    categoryLabel: 'Géographie monumentale & Biodiversité',
+    coverImage: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1200&q=80',
+    imageCaption: 'La spectaculaire trouée rocheuse percée dans la montagne de quartzite d’Alédjo.',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=800&q=80'
+    ],
+    tags: ['Alédjo', 'Faille', 'Atakora', 'Centrale', 'Montagne', 'Route Trans-togolaise', 'Tem'],
+    shortDescription: 'Percée héroïque dans la muraille de roche quartzitique des monts de l’Atakora à 850 mètres d’altitude, la Faille d’Alédjo est un goulet vertigineux qui relie le nord et le sud du Togo, enveloppé par une forêt classée aux essences rares.',
+    presentation: 'Située sur les hauteurs du massif de l’Atakora, entre Sokodé et Bafilo, la Faille d’Alédjo est l’un des paysages les plus impressionnants du Togo. La route nationale serpente à flanc de crête avant de franchir une tranchée rocheuse verticale de plus de vingt mètres de haut, taillée à même le rocher. L’air y est d’une fraîcheur revigorante, contrastant avec la chaleur de la plaine environnante. En contrebas, la forêt d’Alédjo abrite des sources limpides et une faune d’altitude préservée.',
+    touristicInterest: 'Un arrêt photographique et panoramique incontournable lors de la traversée du Togo. Le col offre une vue à couper le souffle sur les vallées verdoyantes de la région Centrale et de la Kara. On y découvre l’histoire des grands travaux routiers coloniaux et les sentiers des anciens marchands de cola et de sel.',
+    practicalInfo: {
+      openingHours: 'Accessible 24h/24 toute l’année le long de la Route Nationale 1. Arrêt belvédère conseillé en journée de 08h00 à 18h00.',
+      fees: 'Accès libre. Guides locaux volontaires au village d’Alédjo pour les sentiers de la réserve forestière (environ 2 000 FCFA).',
+      guidanceAvailable: true,
+      bestSeason: 'D’octobre à février (vue limpide sans brume de pluie, fraîcheur de l’harmattan agréable).',
+      contactInfo: 'Direction Régionale de l’Environnement de Sokodé / Association des jeunes pour la valorisation d’Alédjo.',
+      accessRoute: 'Situé sur la Route Nationale 1, à environ 380 km au nord de Lomé et 40 km au nord de Sokodé.'
+    },
+    historicalContext: 'Avant le percement de la faille dans les années 1930 sous l’administration coloniale française, la montagne d’Alédjo constituait une barrière naturelle redoutable. Les convois de porteurs et les caravaniers devaient gravir des sentiers escarpés au péril de leur vie. Le percement au pic et à l’explosif par des milliers de travailleurs locaux a permis de désenclaver définitivement l’axe nord-sud du Togo.',
+    keyFigures: ['Les bâtisseurs et pionniers de la route trans-togolaise', 'Chefs traditionnels d’Alédjo-Kadara', 'Caravaniers Tem et Djerma'],
+    timeline: [
+      { period: 'XIXe siècle', event: 'Itinéraire caravanier majeur pour le commerce de la noix de cola entre le bassin voltaïque et le Niger.', sourceRef: 'Histoire économique du Togo' },
+      { period: '1932 - 1937', event: 'Percement monumental de la tranchée rocheuse pour ouvrir la route carrossable.', sourceRef: 'Archives des Travaux Publics' },
+      { period: '1980', event: 'Classement de la forêt d’Alédjo comme réserve naturelle protégée.', sourceRef: 'Ministère de l’Environnement' }
+    ],
+    isVerifiedHistory: true,
+    oralTraditions: 'Les récits Tem racontent que la montagne d’Alédjo est habitée par des esprits protecteurs veillant sur les voyageurs. Autrefois, les caravaniers faisaient halte au pied du col pour déposer une pierre et prier les ancêtres avant d’entamer l’ascension de la falaise.',
+    legendsAndBeliefs: 'La brume matinale qui s’engouffre dans la faille est surnommée « le souffle de la montagne » ; on considérait qu’elle purifiait l’esprit de ceux qui entreprenaient un long pèlerinage vers le nord.',
+    culturalPractices: 'Célébrations villageoises de la fête Adossa-Gadao à proximité (Sokodé) et rites de bénédiction des récoltes forestières.',
+    memoryStatusNotice: 'Récits oraux des anciens d’Alédjo croisés avec les rapports du génie civil des années 1930.',
+    immersiveStory: {
+      title: 'Le vertige de la brèche dans la muraille d’Atakora',
+      fullVersion: 'La route grimpe en lacets serrés au milieu des brumes légères. L’air se fait frais, presque piquant. Puis la montagne se referme soudain comme deux mâchoires de pierre géantes : vous entrez dans la Faille d’Alédjo. Les parois de grès rouge et de quartz s’élèvent à pic de chaque côté du véhicule, si proches qu’on croirait pouvoir les toucher. Ici, chaque fissure de la roche raconte la sueur des hommes qui ont fendu le ventre de la falaise pour relier deux moitiés d’un même pays. De l’autre côté de la trouée, l’horizon explose en une mer de collines vertes baignées par la lumière dorée de midi. Le Togo s’offre dans toute sa grandeur brute et indomptée.',
+      shortVersion: 'À 850 mètres d’altitude, la spectaculaire Faille d’Alédjo tranche la montagne pour ouvrir la route du nord. Une porte monumentale taillée dans le roc par la volonté humaine.',
+      youthVersion: 'C’est comme si un géant avait donné un coup d’épée magique dans la montagne pour fabriquer une porte géante pour les voitures ! Tout en haut, le vent chante entre les parois de pierre !',
+      disclaimer: 'Évocation narrative de l’épopée routière et de la beauté géographique des monts d’Alédjo.'
+    },
+    sources: [
+      {
+        title: 'Les monts de l’Atakora : géographie et aménagement des territoires togolais',
+        type: 'Recherche universitaire',
+        authorOrOrg: 'Université de Lomé (Département de Géographie)',
+        year: '2015',
+        verificationDate: '2024-01-10'
+      },
+      {
+        title: 'Monographie de la Réserve de Faune et Flore d’Alédjo',
+        type: 'Institutionnel',
+        authorOrOrg: 'Direction des Ressources Forestières du Togo',
+        year: '2018',
+        verificationDate: '2023-11-05'
+      }
+    ],
+    audioNarrationSnippet: 'Sentez la fraîcheur de l’altitude qui vous saisit. Vous vous trouvez dans la célèbre faille d’Alédjo, à plus de 800 mètres au-dessus des plaines togolaises...',
+    audioDurationMinutes: 3.4,
+    culturalEtiquette: 'Prudence sur le bord des parois rocheuses. Ne jetez aucun déchet dans la réserve forestière protégée.',
+    distanceFromLome: '380 km de Lomé (~5h30 de route bitumée)'
   }
 ];
 

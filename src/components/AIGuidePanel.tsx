@@ -11,6 +11,12 @@ import {
   CheckCircle2,
   Bookmark,
   Volume2,
+  VolumeX,
+  Copy,
+  Check,
+  Compass,
+  ArrowRight,
+  Filter,
 } from 'lucide-react';
 import { HeritageSite } from '../data/sites';
 
@@ -30,6 +36,8 @@ interface AIGuidePanelProps {
   onClearSiteContext?: () => void;
   onSelectSite?: (siteId: string) => void;
   availableSites: HeritageSite[];
+  pendingQuestion?: string | null;
+  onClearPendingQuestion?: () => void;
 }
 
 export const AIGuidePanel: React.FC<AIGuidePanelProps> = ({
@@ -37,31 +45,35 @@ export const AIGuidePanel: React.FC<AIGuidePanelProps> = ({
   onClearSiteContext,
   onSelectSite,
   availableSites,
+  pendingQuestion,
+  onClearPendingQuestion,
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputQuery, setInputQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Initialize or update welcome message when site context changes
   useEffect(() => {
     const welcomeText = currentSite
-      ? `Bonjour ! Je suis le guide IA de miabeStory dédié à la découverte de « ${currentSite.name} ». Posez-moi vos questions sur son histoire vérifiée, ses légendes, son architecture ou la préparation de votre visite.`
-      : `Bonjour ! Je suis le guide conversationnel de miabeStory, propulsé par le modèle Google Gemma. Choisissez un site ou posez-moi vos questions sur le patrimoine, la mémoire historique et la culture du Togo.`;
+      ? `Bonjour ! Je suis le guide conversationnel officiel de miabeStory dédié à la découverte de « **${currentSite.name}** » (${currentSite.categoryLabel}, région ${currentSite.region}).\n\nPosez-moi vos questions sur son **histoire documentée**, ses **traditions orales**, son **architecture** ou la **préparation de votre visite**.`
+      : `Bonjour ! Je suis le guide conversationnel de **miabeStory**, propulsé par le modèle d'IA de la famille Google Gemma.\n\nJe suis formé sur les archives et les inventaires patrimoniaux du Togo. Vous pouvez sélectionner une destination précise ci-dessous ou me poser vos questions sur l'histoire, les mémoires et les peuples togolais.`;
 
     const initialSuggestions = currentSite
       ? [
           `Quelle est l’histoire documentée de ce lieu ?`,
-          `Quelles sont les traditions et croyances associées ?`,
-          `Pourquoi ce site est-il emblématique pour le Togo ?`,
-          `Raconte-moi ce lieu avec des mots simples.`,
+          `Quelles traditions et croyances orales y sont associées ?`,
+          `Que symbolise cet endroit pour le patrimoine togolais ?`,
+          `Quels conseils donnez-vous pour visiter ce site avec respect ?`,
         ]
       : [
-          `Quels sont les sites inscrits au patrimoine mondial au Togo ?`,
-          `Raconte-moi l'histoire du roi Mlapa III et de Togoville.`,
-          `Que symbolisent les Tata Somba du Koutammakou ?`,
-          `Quels hauts lieux de mémoire visiter sur la côte togolaise ?`,
+          `Quels sont les sites classés au patrimoine mondial UNESCO au Togo ?`,
+          `Raconte-moi l'origine du nom du Togo à Togoville en 1884.`,
+          `Pourquoi la métallurgie de Bassar est-elle si célèbre ?`,
+          `Quels lieux de mémoire de la traite visiter sur la côte ?`,
         ];
 
     setMessages([
@@ -71,7 +83,7 @@ export const AIGuidePanel: React.FC<AIGuidePanelProps> = ({
         content: welcomeText,
         modelUsed: 'Google Gemma (gemma-4-31b-it)',
         suggestions: initialSuggestions,
-        sourcesUsed: currentSite ? currentSite.sources.map((s) => s.title) : ['Archives culturelles du Togo'],
+        sourcesUsed: currentSite ? currentSite.sources.map((s) => s.title) : ['Archives culturelles et historiques du Togo'],
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       },
     ]);
@@ -81,9 +93,45 @@ export const AIGuidePanel: React.FC<AIGuidePanelProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
+  // Audio Speech Synthesis for Assistant Messages
+  const handleToggleSpeak = (msgId: string, text: string) => {
+    if (speakingMessageId === msgId) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      setSpeakingMessageId(null);
+      return;
+    }
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      // Clean markdown tags for natural speech
+      const cleanText = text.replace(/[*#_`]/g, '');
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.lang = 'fr-FR';
+      utterance.rate = 1.0;
+      utterance.onend = () => setSpeakingMessageId(null);
+      utterance.onerror = () => setSpeakingMessageId(null);
+      window.speechSynthesis.speak(utterance);
+      setSpeakingMessageId(msgId);
+    }
+  };
+
+  // Copy to clipboard
+  const handleCopy = (id: string, text: string) => {
+    navigator.clipboard?.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
   const handleSendMessage = async (textToSend?: string) => {
     const query = textToSend || inputQuery.trim();
     if (!query || isLoading) return;
+
+    if (speakingMessageId) {
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      setSpeakingMessageId(null);
+    }
 
     setErrorMsg(null);
     setInputQuery('');
@@ -99,7 +147,6 @@ export const AIGuidePanel: React.FC<AIGuidePanelProps> = ({
     setIsLoading(true);
 
     try {
-      // Build lightweight conversation history
       const historyPayload = messages.slice(-4).map((m) => ({
         role: m.role,
         content: m.content,
@@ -145,30 +192,125 @@ export const AIGuidePanel: React.FC<AIGuidePanelProps> = ({
     }
   };
 
+  // Auto-send pending question when passed from SiteDetailModal
+  useEffect(() => {
+    if (pendingQuestion && pendingQuestion.trim()) {
+      handleSendMessage(pendingQuestion);
+      onClearPendingQuestion?.();
+    }
+  }, [pendingQuestion]);
+
   const handleResetChat = () => {
+    if (speakingMessageId && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      setSpeakingMessageId(null);
+    }
     setMessages((prev) => prev.slice(0, 1));
     setErrorMsg(null);
   };
 
+  // Helper to render basic markdown bold, headings, lists, quotes cleanly
+  const renderFormattedContent = (content: string) => {
+    const lines = content.split('\n');
+    return (
+      <div className="space-y-2">
+        {lines.map((line, idx) => {
+          const trimmed = line.trim();
+          if (!trimmed) return <div key={idx} className="h-1.5" />;
+
+          // Heading ###
+          if (line.startsWith('### ')) {
+            return (
+              <h5 key={idx} className="font-bold text-[#174C3C] text-sm pt-2 border-b border-[#DCE8DF]/40 pb-1">
+                {line.replace('### ', '')}
+              </h5>
+            );
+          }
+
+          // Heading ##
+          if (line.startsWith('## ')) {
+            return (
+              <h4 key={idx} className="font-bold font-serif text-[#174C3C] text-base pt-2">
+                {line.replace('## ', '')}
+              </h4>
+            );
+          }
+
+          // Blockquote >
+          if (trimmed.startsWith('> ')) {
+            return (
+              <div key={idx} className="border-l-2 border-[#D6A64F] pl-3 py-1 my-1 italic text-xs text-[#174C3C] bg-[#F7F4EC]/60 rounded-r-lg">
+                {renderInlineStyles(trimmed.slice(2))}
+              </div>
+            );
+          }
+
+          // Bullet list - or *
+          if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+            const text = trimmed.slice(2);
+            return (
+              <div key={idx} className="flex items-start space-x-2 pl-2 text-xs sm:text-sm">
+                <span className="text-[#D6A64F] font-bold mt-0.5">•</span>
+                <span className="leading-relaxed">{renderInlineStyles(text)}</span>
+              </div>
+            );
+          }
+
+          // Numbered list 1. 2. etc.
+          const numMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
+          if (numMatch) {
+            return (
+              <div key={idx} className="flex items-start space-x-2 pl-2 text-xs sm:text-sm">
+                <span className="text-[#174C3C] font-bold text-xs shrink-0 mt-0.5">{numMatch[1]}.</span>
+                <span className="leading-relaxed">{renderInlineStyles(numMatch[2])}</span>
+              </div>
+            );
+          }
+
+          return (
+            <p key={idx} className="text-xs sm:text-sm leading-relaxed">
+              {renderInlineStyles(line)}
+            </p>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderInlineStyles = (text: string) => {
+    // Process **bold** first
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return (
+          <strong key={i} className="font-bold text-[#174C3C]">
+            {part.slice(2, -2)}
+          </strong>
+        );
+      }
+      return part;
+    });
+  };
+
   return (
-    <div className="bg-white rounded-3xl border border-[#DCE8DF] shadow-md flex flex-col h-[750px] max-h-[85vh] overflow-hidden">
+    <div className="bg-white rounded-3xl border border-[#DCE8DF] shadow-md flex flex-col h-[760px] max-h-[85vh] overflow-hidden">
       {/* Top Banner & Context Info */}
       <div className="bg-[#174C3C] text-white px-6 py-4 flex items-center justify-between shadow-xs">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/20">
+        <div className="flex items-center space-x-3.5">
+          <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20 shadow-xs shrink-0">
             <Bot className="w-6 h-6 text-[#D6A64F]" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
               <h3 className="font-bold text-sm sm:text-base font-serif">Guide IA miabeStory</h3>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#D6A64F] text-[#202722]">
-                Gemma 4-31B-IT
+                Gemma RAG
               </span>
             </div>
-            <p className="text-xs text-emerald-100/80 truncate max-w-xs sm:max-w-md">
+            <p className="text-xs text-emerald-100/90 truncate max-w-xs sm:max-w-md">
               {currentSite
-                ? `Contexte ancré : ${currentSite.name}`
-                : 'Contexte global : Tout le patrimoine togolais'}
+                ? `Ancrage : ${currentSite.name}`
+                : 'Ancrage : Patrimoine global des 5 régions du Togo'}
             </p>
           </div>
         </div>
@@ -177,43 +319,55 @@ export const AIGuidePanel: React.FC<AIGuidePanelProps> = ({
           {currentSite && onClearSiteContext && (
             <button
               onClick={onClearSiteContext}
-              className="text-[11px] px-2.5 py-1 bg-white/10 hover:bg-white/20 rounded-lg text-emerald-100 transition-colors cursor-pointer"
+              className="text-[11px] px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-xl text-emerald-100 transition-colors cursor-pointer"
               title="Passer en mode découverte globale"
             >
-              Vue générale
+              Vue globale
             </button>
           )}
 
           <button
             onClick={handleResetChat}
-            className="p-1.5 text-emerald-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
-            title="Réinitialiser la conversation"
+            className="p-2 text-emerald-100 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer"
+            title="Effacer et recommencer la conversation"
           >
             <RotateCcw className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Site Selector Bar if no site selected */}
-      {!currentSite && onSelectSite && (
+      {/* Destination Quick Selector Strip */}
+      {onSelectSite && (
         <div className="bg-[#F7F4EC] px-4 py-2 border-b border-[#DCE8DF] flex items-center space-x-2 text-xs overflow-x-auto scrollbar-none">
-          <span className="text-[#68716C] shrink-0 font-medium">Ancrer sur un site :</span>
-          {availableSites.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => onSelectSite(s.id)}
-              className="px-2.5 py-1 rounded-md bg-white hover:bg-[#DCE8DF] text-[#174C3C] border border-[#DCE8DF] whitespace-nowrap text-[11px] font-medium transition-colors cursor-pointer"
-            >
-              {s.name.split(',')[0]}
-            </button>
-          ))}
+          <span className="text-[#68716C] shrink-0 font-semibold text-[11px] flex items-center space-x-1">
+            <Compass className="w-3.5 h-3.5 text-[#174C3C]" />
+            <span>Changer de destination :</span>
+          </span>
+          {availableSites.map((s) => {
+            const isSelected = currentSite?.id === s.id;
+            return (
+              <button
+                key={s.id}
+                onClick={() => onSelectSite(s.id)}
+                className={`px-3 py-1 rounded-lg whitespace-nowrap text-[11px] font-medium transition-all cursor-pointer ${
+                  isSelected
+                    ? 'bg-[#174C3C] text-white shadow-2xs font-bold'
+                    : 'bg-white hover:bg-[#DCE8DF] text-[#202722] border border-[#DCE8DF]'
+                }`}
+              >
+                {s.name.split(',')[0]}
+              </button>
+            );
+          })}
         </div>
       )}
 
       {/* Chat Messages Scrollable Box */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-[#F7F4EC]/50">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-[#F7F4EC]/40">
         {messages.map((msg) => {
           const isUser = msg.role === 'user';
+          const isSpeaking = speakingMessageId === msg.id;
+
           return (
             <div
               key={msg.id}
@@ -221,36 +375,68 @@ export const AIGuidePanel: React.FC<AIGuidePanelProps> = ({
             >
               {/* Message Bubble */}
               <div
-                className={`max-w-[88%] sm:max-w-[80%] rounded-2xl px-5 py-3.5 shadow-xs text-sm leading-relaxed ${
+                className={`max-w-[90%] sm:max-w-[82%] rounded-2xl px-5 py-4 shadow-xs text-sm leading-relaxed transition-all ${
                   isUser
                     ? 'bg-[#174C3C] text-white rounded-br-xs'
                     : 'bg-white text-[#202722] border border-[#DCE8DF] rounded-bl-xs'
                 }`}
               >
                 {!isUser && (
-                  <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-gray-100 text-xs">
-                    <span className="font-bold text-[#174C3C] flex items-center space-x-1">
+                  <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-gray-100 text-xs">
+                    <span className="font-bold text-[#174C3C] flex items-center space-x-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-[#D6A64F]" />
-                      <span>Réponse du Guide</span>
+                      <span>Réponse du Guide miabeStory</span>
                     </span>
-                    <span className="text-[10px] text-[#68716C] font-mono">
-                      {msg.modelUsed || 'Gemma'}
-                    </span>
+
+                    <div className="flex items-center space-x-1.5">
+                      {/* Audio listen button */}
+                      <button
+                        onClick={() => handleToggleSpeak(msg.id, msg.content)}
+                        className={`p-1 rounded-md transition-colors ${
+                          isSpeaking
+                            ? 'bg-[#D6A64F] text-[#202722]'
+                            : 'text-[#68716C] hover:text-[#174C3C] hover:bg-gray-100'
+                        }`}
+                        title={isSpeaking ? 'Arrêter la lecture vocale' : 'Écouter la réponse à voix haute'}
+                      >
+                        {isSpeaking ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                      </button>
+
+                      {/* Copy button */}
+                      <button
+                        onClick={() => handleCopy(msg.id, msg.content)}
+                        className="p-1 text-[#68716C] hover:text-[#174C3C] hover:bg-gray-100 rounded-md transition-colors"
+                        title="Copier le texte"
+                      >
+                        {copiedId === msg.id ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+
+                      <span className="text-[10px] text-[#68716C] font-mono ml-1">
+                        {msg.modelUsed || 'Gemma'}
+                      </span>
+                    </div>
                   </div>
                 )}
 
-                <div className="whitespace-pre-line text-[13px] sm:text-sm">
-                  {msg.content}
-                </div>
+                {/* Formatted body */}
+                {isUser ? (
+                  <div className="whitespace-pre-line text-xs sm:text-sm">{msg.content}</div>
+                ) : (
+                  renderFormattedContent(msg.content)
+                )}
 
                 {/* Sources Used footer if available */}
                 {msg.sourcesUsed && msg.sourcesUsed.length > 0 && !isUser && (
-                  <div className="mt-3 pt-2 border-t border-gray-100 text-[11px] text-[#68716C] space-y-1">
+                  <div className="mt-3.5 pt-2.5 border-t border-gray-100 text-[11px] text-[#68716C] space-y-1">
                     <p className="font-semibold text-[#174C3C] flex items-center space-x-1">
                       <Bookmark className="w-3 h-3 text-[#D6A64F]" />
-                      <span>Sources documentaires associées :</span>
+                      <span>Sources documentaires & archives de référence :</span>
                     </p>
-                    <ul className="list-disc list-inside space-y-0.5 text-gray-500">
+                    <ul className="list-disc list-inside space-y-0.5 text-gray-500 pl-1">
                       {msg.sourcesUsed.map((src, i) => (
                         <li key={i} className="truncate">{src}</li>
                       ))}
@@ -260,8 +446,8 @@ export const AIGuidePanel: React.FC<AIGuidePanelProps> = ({
 
                 {/* Simulation Notice if offline */}
                 {msg.isSimulated && (
-                  <div className="mt-2 text-[10px] text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-200">
-                    Mode Démonstration simulée (absence de clé API en environnement)
+                  <div className="mt-2 text-[10px] text-amber-800 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200">
+                    Mode Démonstration préparé (clé API non renseignée)
                   </div>
                 )}
               </div>
@@ -271,12 +457,12 @@ export const AIGuidePanel: React.FC<AIGuidePanelProps> = ({
 
               {/* Follow-up suggestions */}
               {msg.suggestions && msg.suggestions.length > 0 && !isUser && (
-                <div className="pt-2 flex flex-wrap gap-1.5 max-w-[85%]">
+                <div className="pt-2 flex flex-wrap gap-1.5 max-w-[88%]">
                   {msg.suggestions.map((sug, i) => (
                     <button
                       key={i}
                       onClick={() => handleSendMessage(sug)}
-                      className="px-3 py-1.5 rounded-full bg-white hover:bg-[#DCE8DF] text-[#174C3C] text-xs font-medium border border-[#DCE8DF] shadow-2xs text-left transition-colors cursor-pointer"
+                      className="px-3 py-1.5 rounded-full bg-white hover:bg-[#DCE8DF] text-[#174C3C] text-xs font-medium border border-[#DCE8DF] shadow-2xs text-left transition-all cursor-pointer hover:border-[#174C3C]/40"
                     >
                       💡 {sug}
                     </button>
@@ -290,19 +476,19 @@ export const AIGuidePanel: React.FC<AIGuidePanelProps> = ({
         {/* Loading Spinner */}
         {isLoading && (
           <div className="flex items-center space-x-3 bg-white p-4 rounded-2xl border border-[#DCE8DF] max-w-sm shadow-xs animate-pulse">
-            <div className="w-8 h-8 rounded-full bg-[#174C3C]/10 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-[#174C3C]/10 flex items-center justify-center shrink-0">
               <Bot className="w-4 h-4 text-[#174C3C] animate-spin" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-[#174C3C]">Le modèle Gemma réfléchit...</p>
-              <p className="text-[11px] text-[#68716C]">Consultation des archives togolaises et vérification des sources</p>
+              <p className="text-xs font-bold text-[#174C3C]">Le guide explore les archives...</p>
+              <p className="text-[11px] text-[#68716C]">Vérification documentaire et formulation de la réponse</p>
             </div>
           </div>
         )}
 
         {/* Error notification */}
         {errorMsg && (
-          <div className="p-3 bg-red-50 text-red-800 rounded-xl border border-red-200 text-xs flex items-center space-x-2">
+          <div className="p-3.5 bg-red-50 text-red-800 rounded-xl border border-red-200 text-xs flex items-center space-x-2">
             <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
             <span>{errorMsg}</span>
           </div>
@@ -311,7 +497,7 @@ export const AIGuidePanel: React.FC<AIGuidePanelProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Form */}
+      {/* Input Form with Send */}
       <div className="p-4 bg-white border-t border-[#DCE8DF]">
         <form
           onSubmit={(e) => {
@@ -327,16 +513,16 @@ export const AIGuidePanel: React.FC<AIGuidePanelProps> = ({
             disabled={isLoading}
             placeholder={
               currentSite
-                ? `Posez votre question sur ${currentSite.name}...`
-                : "Posez votre question sur l'histoire ou les sites du Togo..."
+                ? `Posez votre question sur ${currentSite.name.split(',')[0]}...`
+                : "Posez votre question sur l'histoire, les mémoires ou les sites du Togo..."
             }
-            className="flex-1 px-4 py-3 bg-[#F7F4EC] rounded-xl border border-[#DCE8DF] text-sm text-[#202722] placeholder-[#68716C] focus:outline-hidden focus:border-[#174C3C] focus:bg-white transition-colors"
+            className="flex-1 px-4 py-3 bg-[#F7F4EC] rounded-xl border border-[#DCE8DF] text-xs sm:text-sm text-[#202722] placeholder-[#68716C] focus:outline-hidden focus:border-[#174C3C] focus:bg-white transition-colors"
           />
 
           <button
             type="submit"
             disabled={!inputQuery.trim() || isLoading}
-            className="p-3 bg-[#174C3C] hover:bg-[#0f3429] disabled:bg-gray-300 text-white rounded-xl shadow-xs transition-colors cursor-pointer"
+            className="p-3 bg-[#174C3C] hover:bg-[#0f3429] disabled:bg-gray-300 text-white rounded-xl shadow-xs transition-colors cursor-pointer shrink-0"
             aria-label="Envoyer"
           >
             <Send className="w-4 h-4" />
@@ -346,9 +532,9 @@ export const AIGuidePanel: React.FC<AIGuidePanelProps> = ({
         <div className="flex items-center justify-between pt-2 px-1 text-[11px] text-[#68716C]">
           <span className="flex items-center space-x-1">
             <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-            <span>RAG contextuel : faits vérifiés séparés des traditions orales</span>
+            <span>RAG contextuel : séparation des faits avérés et des traditions orales</span>
           </span>
-          <span className="font-mono text-[10px]">Gemma 4-31B-IT</span>
+          <span className="font-mono text-[10px] text-[#174C3C] font-semibold">Gemma 4-31B-IT</span>
         </div>
       </div>
     </div>

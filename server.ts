@@ -127,11 +127,17 @@ app.post('/api/sites/reset', (req: Request, res: Response) => {
 
 // Helper: build documentary grounding text for a site
 function buildSiteContext(site: HeritageSite): string {
+  const otherSitesSummary = sitesDatabase
+    .filter((s) => s.id !== site.id)
+    .map((s) => `- ${s.name} (${s.region}, ${s.categoryLabel})`)
+    .join('\n');
+
   return `
 CONTEXTE DOCUMENTAIRE DU SITE TOUJOURS PRIORITAIRE :
 Nom du site : ${site.name} (${site.categoryLabel})
 Localisation : ${site.locality}, Préfecture de ${site.prefecture}, Région : ${site.region}
 Coordonnées GPS : Lat ${site.coordinates.lat}, Lng ${site.coordinates.lng}
+Distance & trajet depuis Lomé : ${site.distanceFromLome || 'Accessible par la route'}
 
 Présentation générale :
 ${site.presentation}
@@ -151,6 +157,7 @@ Traditions orales, croyances et mémoire locale :
 - Mythes et légendes : ${site.legendsAndBeliefs}
 - Pratiques culturelles et rituels : ${site.culturalPractices}
 - Statut mémoriel : ${site.memoryStatusNotice}
+- Étiquette et respect coutumier : ${site.culturalEtiquette || 'Respecter les dignitaires locaux et demander avant de photographier'}
 
 Informations pratiques pour la visite :
 - Horaires : ${site.practicalInfo.openingHours}
@@ -161,6 +168,9 @@ Informations pratiques pour la visite :
 
 Sources documentaires de référence :
 ${site.sources.map((s) => `- ${s.title} (${s.type}) par ${s.authorOrOrg} [Vérifié le ${s.verificationDate}]`).join('\n')}
+
+AUTRES SITES DU PATRIMOINE TOGOLAIS POUR ÉVENTUELLE COMPARAISON OU TRANSVERSALITÉ :
+${otherSitesSummary}
 `;
 }
 
@@ -175,22 +185,39 @@ app.post('/api/ai/chat', async (req: Request, res: Response) => {
   // Find site context if siteId is specified
   const site = siteId ? sitesDatabase.find((s) => s.id === siteId || s.slug === siteId) : null;
 
+  const allSitesIndex = sitesDatabase
+    .map((s) => `- ${s.name} (${s.region}, ${s.categoryLabel}, ${s.locality}) : ${s.shortDescription}`)
+    .join('\n');
+
   const siteContextText = site
     ? buildSiteContext(site)
-    : `L'utilisateur pose une question générale sur le patrimoine touristique, historique et culturel du Togo.`;
+    : `
+PANORAMA COMPLET DU PATRIMOINE DU TOGO :
+${allSitesIndex}
+
+L'utilisateur pose une question générale sur le patrimoine touristique, l'histoire et les mémoires culturelles du Togo.
+`;
 
   const systemInstruction = `
-Tu es le Guide Conversationnel Officiel de miabeStory, la plateforme numérique dédiée au patrimoine, à l'histoire et à la mémoire culturelle du Togo.
+Tu es le Guide Conversationnel Officiel de miabeStory, la plateforme numérique d'excellence consacrée au patrimoine, à l'histoire et à la mémoire culturelle du Togo.
 
-PRINCIPES D'EXCELLENCE :
-1. TON ET STYLE : Exprime-toi dans un français soigné, chaleureux, pédagogue et respectueux de la mémoire des peuples du Togo.
-2. RIGUEUR HISTORIQUE : Distingue TOUJOURS de manière explicite :
-   - Les faits historiques documentés et vérifiés par les archives ou les recherches académiques.
-   - Les traditions orales et mémoires transmises de génération en génération.
-   - Les récits légendaires ou cosmogoniques (ex: Kuié pour les Batammariba, Trovodu pour le lac Togo).
-3. SOURCES ET FIABILITÉ : Quand tu t'appuies sur des éléments du dossier, mentionne les sources disponibles (UNESCO, Ministère de la Culture, Université de Lomé, etc.). Ne JAMAIS inventer de fausses références.
-4. LIMITES DES CONNAISSANCES : Si la question dépasse les éléments connus ou s'il y a des incertitudes dans les sources, dis-le clairement en toute honnêteté.
-5. CONCISION ET PÉDAGOGIE : Réponds de manière fluide, bien rythmée, avec des paragraphes clairs et aérés.
+EXIGENCES ABSOLUES DE PRÉCISION ET DE PERTINENCE :
+1. TON ET POSTURE :
+   - Exprime-toi dans un français soigné, chaleureux, élégant et pédagogue.
+   - Adopte une posture d'historien et de passeur de mémoire togolais respectueux.
+
+2. RIGUEUR MÉMORIELLE ET TYPOLOGIE DES SAVOIRS :
+   - Distingue TOUJOURS avec clarté :
+     * Les faits historiques attestés par des archives écrites ou des fouilles archéologiques.
+     * Les traditions orales transmises de génération en génération (noblesse de la transmission orale africaine).
+     * Les mythes cosmogoniques ou croyances spirituelles (Kuié, vodous d'eau, esprits de l'Atakora).
+   - N'invente JAMAIS d'événements, de dates ou de citations fictives. Si un point n'est pas documenté, dis-le avec franchise (« Les sources archivistiques disponibles ne précisent pas... »).
+
+3. CITATION SYSTÉMATIQUE DES SOURCES :
+   - Mentionne les sources scientifiques et institutionnelles répertoriées (UNESCO, Ministère de la Culture du Togo, travaux du Prof. Nicoué Gayibor, Université de Lomé, etc.).
+
+4. STRUCTURE VISUELLE DE RÉPONSE :
+   - Structure tes réponses avec des paragraphes aérés, du texte en gras pour les concepts clés ou les mots en langues locales (ex: Takienta, Gatovoudo, Tata Somba, Otammari), et des puces si plusieurs points sont abordés.
 
 ${siteContextText}
 `;

@@ -34,6 +34,7 @@ export default function App() {
   const [selectedSiteForDetail, setSelectedSiteForDetail] = useState<HeritageSite | null>(null);
   const [activeStorySite, setActiveStorySite] = useState<HeritageSite>(INITIAL_SITES[0]);
   const [guideSiteContext, setGuideSiteContext] = useState<HeritageSite | null>(null);
+  const [pendingGuideQuestion, setPendingGuideQuestion] = useState<string | null>(null);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
   // Filters for Catalogue
@@ -121,8 +122,11 @@ export default function App() {
     setActiveTab('sites');
   };
 
-  const handleOpenGuideForSite = (site: HeritageSite) => {
+  const handleOpenGuideForSite = (site: HeritageSite, prefilledQuestion?: string) => {
     setGuideSiteContext(site);
+    if (prefilledQuestion) {
+      setPendingGuideQuestion(prefilledQuestion);
+    }
     setActiveTab('ai-guide');
     setSelectedSiteForDetail(null);
   };
@@ -561,6 +565,8 @@ export default function App() {
                 if (s) setGuideSiteContext(s);
               }}
               availableSites={sites}
+              pendingQuestion={pendingGuideQuestion}
+              onClearPendingQuestion={() => setPendingGuideQuestion(null)}
             />
           </div>
         )}

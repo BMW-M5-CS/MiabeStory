@@ -11,18 +11,23 @@ import {
   ExternalLink,
   BookOpen,
   Volume2,
+  VolumeX,
   BookmarkCheck,
   Info,
   ChevronRight,
   Share2,
   CheckCircle2,
+  Printer,
+  ShieldAlert,
+  Car,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { HeritageSite } from '../data/sites';
 
 interface SiteDetailModalProps {
   site: HeritageSite | null;
   onClose: () => void;
-  onOpenGuideForSite: (site: HeritageSite) => void;
+  onOpenGuideForSite: (site: HeritageSite, prefilledQuestion?: string) => void;
   onOpenStoryForSite: (site: HeritageSite) => void;
 }
 
@@ -36,6 +41,8 @@ export const SiteDetailModal: React.FC<SiteDetailModalProps> = ({
     'decouvrir' | 'histoire' | 'traditions' | 'recit' | 'visite' | 'sources'
   >('decouvrir');
   const [copiedLink, setCopiedLink] = useState(false);
+  const [lightboxImg, setLightboxImg] = useState<{ url: string; caption: string } | null>(null);
+  const [isPlayingInlineAudio, setIsPlayingInlineAudio] = useState(false);
 
   if (!site) return null;
 
@@ -43,6 +50,37 @@ export const SiteDetailModal: React.FC<SiteDetailModalProps> = ({
     navigator.clipboard?.writeText(window.location.href);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleToggleInlineAudio = () => {
+    if (isPlayingInlineAudio) {
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      setIsPlayingInlineAudio(false);
+      return;
+    }
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(site.immersiveStory.fullVersion);
+      utterance.lang = 'fr-FR';
+      utterance.rate = 1.0;
+      utterance.onend = () => setIsPlayingInlineAudio(false);
+      utterance.onerror = () => setIsPlayingInlineAudio(false);
+      window.speechSynthesis.speak(utterance);
+      setIsPlayingInlineAudio(true);
+    }
+  };
+
+  const handleCloseModal = () => {
+    if (isPlayingInlineAudio && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      setIsPlayingInlineAudio(false);
+    }
+    onClose();
   };
 
   const sections = [
@@ -55,30 +93,39 @@ export const SiteDetailModal: React.FC<SiteDetailModalProps> = ({
   ] as const;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex justify-center p-2 sm:p-4 md:p-6 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/65 backdrop-blur-xs flex justify-center p-2 sm:p-4 md:p-6 animate-in fade-in duration-200">
       <div className="relative w-full max-w-5xl bg-[#F7F4EC] rounded-3xl shadow-2xl overflow-hidden flex flex-col my-auto max-h-[92vh] border border-[#174C3C]/20">
+        
         {/* Sticky Top Header */}
         <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-6 py-4 border-b border-[#DCE8DF] flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-[#174C3C] text-white">
+            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#174C3C] text-white">
               {site.categoryLabel}
             </span>
             <span className="text-xs text-[#68716C] flex items-center space-x-1">
               <MapPin className="w-3.5 h-3.5 text-[#D6A64F]" />
-              <span>{site.locality} ({site.region})</span>
+              <span className="font-medium text-[#202722]">{site.locality}</span>
+              <span>({site.region})</span>
             </span>
           </div>
 
           <div className="flex items-center space-x-2">
             <button
-              onClick={handleShare}
-              className="p-2 text-[#68716C] hover:text-[#174C3C] hover:bg-[#DCE8DF]/50 rounded-lg transition-colors cursor-pointer"
-              title="Partager le lien de ce site"
+              onClick={handlePrint}
+              className="p-2 text-[#68716C] hover:text-[#174C3C] hover:bg-[#DCE8DF]/50 rounded-xl transition-colors cursor-pointer"
+              title="Imprimer ou enregistrer le dossier"
             >
-              {copiedLink ? <CheckCircle2 className="w-5 h-5 text-emerald-600" /> : <Share2 className="w-5 h-5" />}
+              <Printer className="w-4 h-4" />
             </button>
             <button
-              onClick={onClose}
+              onClick={handleShare}
+              className="p-2 text-[#68716C] hover:text-[#174C3C] hover:bg-[#DCE8DF]/50 rounded-xl transition-colors cursor-pointer"
+              title="Copier le lien de cette fiche"
+            >
+              {copiedLink ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <Share2 className="w-4 h-4" />}
+            </button>
+            <button
+              onClick={handleCloseModal}
               className="p-2 text-[#68716C] hover:text-[#202722] hover:bg-[#DCE8DF]/60 rounded-full transition-colors cursor-pointer"
               aria-label="Fermer"
             >
@@ -90,18 +137,34 @@ export const SiteDetailModal: React.FC<SiteDetailModalProps> = ({
         {/* Scrollable Body */}
         <div className="overflow-y-auto flex-1">
           {/* Hero Banner inside modal */}
-          <div className="relative h-72 sm:h-96 w-full overflow-hidden">
+          <div
+            className="relative h-72 sm:h-96 w-full overflow-hidden cursor-pointer group"
+            onClick={() => setLightboxImg({ url: site.coverImage, caption: site.name + ' — ' + site.imageCaption })}
+            title="Cliquer pour voir la photo en grand"
+          >
             <img
               src={site.coverImage}
               alt={site.name}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-500"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#202722]/90 via-[#202722]/40 to-transparent" />
 
+            <div className="absolute top-4 right-4 bg-black/40 backdrop-blur-xs text-white text-xs px-2.5 py-1 rounded-lg flex items-center space-x-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+              <ImageIcon className="w-3.5 h-3.5" />
+              <span>Agrandir</span>
+            </div>
+
             <div className="absolute bottom-6 left-6 right-6 text-white space-y-2">
-              <span className="px-3 py-1 rounded-md text-xs font-semibold bg-[#D6A64F] text-[#202722]">
-                Région : {site.region} · {site.prefecture}
-              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-3 py-1 rounded-md text-xs font-semibold bg-[#D6A64F] text-[#202722]">
+                  Région : {site.region} · Préfecture : {site.prefecture}
+                </span>
+                {site.distanceFromLome && (
+                  <span className="px-3 py-1 rounded-md text-xs font-medium bg-black/40 text-emerald-100 backdrop-blur-xs">
+                    📍 {site.distanceFromLome}
+                  </span>
+                )}
+              </div>
               <h2 className="text-2xl sm:text-4xl font-bold font-serif leading-tight text-white drop-shadow-md">
                 {site.name}
               </h2>
@@ -117,7 +180,7 @@ export const SiteDetailModal: React.FC<SiteDetailModalProps> = ({
           </div>
 
           {/* Quick Action Floating Bar */}
-          <div className="bg-white px-6 py-3 border-b border-[#DCE8DF] flex flex-wrap items-center justify-between gap-3 shadow-xs">
+          <div className="bg-white px-6 py-3.5 border-b border-[#DCE8DF] flex flex-wrap items-center justify-between gap-3 shadow-xs">
             {/* Quick Action Buttons */}
             <div className="flex items-center space-x-2">
               <button
@@ -130,10 +193,10 @@ export const SiteDetailModal: React.FC<SiteDetailModalProps> = ({
 
               <button
                 onClick={() => onOpenGuideForSite(site)}
-                className="px-4 py-2 bg-[#174C3C] hover:bg-[#0f3429] text-white rounded-xl text-xs font-medium flex items-center space-x-2 transition-all shadow-xs cursor-pointer"
+                className="px-4 py-2 bg-[#174C3C] hover:bg-[#0f3429] text-white rounded-xl text-xs font-semibold flex items-center space-x-2 transition-all shadow-xs cursor-pointer"
               >
                 <Bot className="w-4 h-4 text-[#D6A64F]" />
-                <span>Poser une question au Guide IA</span>
+                <span>Interroger le Guide IA</span>
               </button>
             </div>
 
@@ -145,7 +208,7 @@ export const SiteDetailModal: React.FC<SiteDetailModalProps> = ({
               className="text-xs text-[#174C3C] hover:underline flex items-center space-x-1"
             >
               <Compass className="w-3.5 h-3.5 text-[#174C3C]" />
-              <span>Ouvrir sur Maps ({site.coordinates.lat}, {site.coordinates.lng})</span>
+              <span>Ouvrir sur Maps ({site.coordinates.lat}°N, {site.coordinates.lng}°E)</span>
               <ExternalLink className="w-3 h-3 text-[#68716C]" />
             </a>
           </div>
@@ -156,7 +219,7 @@ export const SiteDetailModal: React.FC<SiteDetailModalProps> = ({
               <button
                 key={s.id}
                 onClick={() => setActiveSection(s.id)}
-                className={`px-3.5 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                   activeSection === s.id
                     ? 'bg-[#174C3C] text-white shadow-xs'
                     : 'text-[#202722] hover:bg-white/60'
@@ -169,6 +232,7 @@ export const SiteDetailModal: React.FC<SiteDetailModalProps> = ({
 
           {/* Tab Content Panels */}
           <div className="p-6 sm:p-8 space-y-8 bg-[#F7F4EC]">
+            
             {/* Section 1: Découvrir le lieu */}
             {activeSection === 'decouvrir' && (
               <div className="space-y-6">
@@ -191,6 +255,34 @@ export const SiteDetailModal: React.FC<SiteDetailModalProps> = ({
                     {site.touristicInterest}
                   </p>
                 </div>
+
+                {/* Gallery Images Strip */}
+                {site.galleryImages.length > 0 && (
+                  <div className="bg-white p-6 rounded-2xl border border-[#DCE8DF] shadow-xs space-y-3">
+                    <h4 className="text-sm font-bold text-[#174C3C] flex items-center space-x-2">
+                      <ImageIcon className="w-4 h-4 text-[#D6A64F]" />
+                      <span>Galerie de photographies autorisées</span>
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {site.galleryImages.map((imgUrl, i) => (
+                        <div
+                          key={i}
+                          onClick={() => setLightboxImg({ url: imgUrl, caption: `${site.name} — Vue complémentaire ${i + 1}` })}
+                          className="relative h-32 rounded-xl overflow-hidden border border-[#DCE8DF] cursor-pointer group"
+                        >
+                          <img
+                            src={imgUrl}
+                            alt=""
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-semibold">
+                            <span>Agrandir</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Practical Quick Summary */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -229,7 +321,7 @@ export const SiteDetailModal: React.FC<SiteDetailModalProps> = ({
                     <h3 className="text-xl font-bold font-serif text-[#174C3C]">
                       Contexte et mémoire historique
                     </h3>
-                    <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    <span className="inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
                       <BookmarkCheck className="w-3.5 h-3.5" />
                       <span>Histoire vérifiée & documentée</span>
                     </span>
@@ -249,7 +341,7 @@ export const SiteDetailModal: React.FC<SiteDetailModalProps> = ({
                         {site.keyFigures.map((fig) => (
                           <span
                             key={fig}
-                            className="px-3 py-1 bg-[#F7F4EC] text-[#174C3C] rounded-lg text-xs font-medium border border-[#DCE8DF]"
+                            className="px-3 py-1 bg-[#F7F4EC] text-[#174C3C] rounded-lg text-xs font-semibold border border-[#DCE8DF]"
                           >
                             {fig}
                           </span>
@@ -280,6 +372,22 @@ export const SiteDetailModal: React.FC<SiteDetailModalProps> = ({
                       </div>
                     ))}
                   </div>
+                </div>
+
+                {/* Quick AI Prompt Trigger */}
+                <div className="bg-emerald-50/80 p-4 rounded-2xl border border-emerald-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center space-x-2.5">
+                    <Bot className="w-5 h-5 text-[#174C3C] shrink-0" />
+                    <span className="text-[#174C3C] font-medium">
+                      Vous souhaitez approfondir un événement historique de ce lieu ?
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => onOpenGuideForSite(site, `Peux-tu m'expliquer en détail le contexte historique de ${site.name} ?`)}
+                    className="px-3.5 py-1.5 bg-[#174C3C] text-white rounded-xl font-semibold shadow-xs shrink-0 cursor-pointer"
+                  >
+                    Questionner l'IA →
+                  </button>
                 </div>
               </div>
             )}
@@ -328,17 +436,31 @@ export const SiteDetailModal: React.FC<SiteDetailModalProps> = ({
             {activeSection === 'recit' && (
               <div className="space-y-6">
                 <div className="bg-gradient-to-r from-[#174C3C] to-[#0f3429] text-white p-6 sm:p-8 rounded-3xl shadow-lg space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#D6A64F] text-[#202722]">
                       Narration miabeStory
                     </span>
-                    <button
-                      onClick={() => onOpenStoryForSite(site)}
-                      className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl text-xs font-medium flex items-center space-x-1.5 transition-colors cursor-pointer"
-                    >
-                      <Volume2 className="w-4 h-4 text-[#D6A64F]" />
-                      <span>Écouter & Personnaliser</span>
-                    </button>
+
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={handleToggleInlineAudio}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors cursor-pointer ${
+                          isPlayingInlineAudio
+                            ? 'bg-[#D6A64F] text-[#202722]'
+                            : 'bg-white/20 hover:bg-white/30 text-white'
+                        }`}
+                      >
+                        {isPlayingInlineAudio ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                        <span>{isPlayingInlineAudio ? 'Arrêter la voix' : 'Écouter'}</span>
+                      </button>
+
+                      <button
+                        onClick={() => onOpenStoryForSite(site)}
+                        className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-xl text-xs font-medium transition-colors cursor-pointer"
+                      >
+                        Personnaliser le récit →
+                      </button>
+                    </div>
                   </div>
 
                   <h3 className="text-2xl sm:text-3xl font-bold font-serif text-white">
@@ -380,6 +502,17 @@ export const SiteDetailModal: React.FC<SiteDetailModalProps> = ({
             {/* Section 5: Préparer sa visite */}
             {activeSection === 'visite' && (
               <div className="space-y-6">
+                {/* Cultural Etiquette Banner */}
+                {site.culturalEtiquette && (
+                  <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 flex items-start space-x-3 text-xs text-emerald-900">
+                    <ShieldAlert className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold">Code d’éthique et de respect coutumier : </span>
+                      {site.culturalEtiquette}
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="bg-white p-6 rounded-2xl border border-[#DCE8DF] shadow-xs space-y-4">
                     <h4 className="text-base font-bold text-[#174C3C] flex items-center space-x-2">
@@ -390,10 +523,17 @@ export const SiteDetailModal: React.FC<SiteDetailModalProps> = ({
                       {site.practicalInfo.accessRoute}
                     </p>
 
+                    {site.distanceFromLome && (
+                      <div className="flex items-center space-x-2 text-xs font-semibold text-[#174C3C] bg-[#F7F4EC] p-2.5 rounded-xl border border-[#DCE8DF]">
+                        <Car className="w-4 h-4 text-[#D6A64F]" />
+                        <span>Distance depuis la capitale : {site.distanceFromLome}</span>
+                      </div>
+                    )}
+
                     <div className="pt-2">
                       <p className="text-xs font-semibold text-[#68716C] mb-1">Coordonnées GPS officielles :</p>
                       <code className="text-xs bg-[#F7F4EC] px-3 py-1.5 rounded-lg border border-[#DCE8DF] text-[#174C3C] font-mono">
-                        Latitude: {site.coordinates.lat} / Longitude: {site.coordinates.lng}
+                        Latitude: {site.coordinates.lat}°N / Longitude: {site.coordinates.lng}°E
                       </code>
                     </div>
                   </div>
@@ -414,7 +554,7 @@ export const SiteDetailModal: React.FC<SiteDetailModalProps> = ({
                       </li>
                       <li className="flex items-start space-x-2">
                         <ChevronRight className="w-4 h-4 text-[#D6A64F] shrink-0 mt-0.5" />
-                        <span><strong>Respect des lieux :</strong> Demandez toujours l’autorisation avant de photographier des autels ou des résidents.</span>
+                        <span><strong>Meilleur moment :</strong> {site.practicalInfo.bestSeason}</span>
                       </li>
                     </ul>
                   </div>
@@ -474,20 +614,20 @@ export const SiteDetailModal: React.FC<SiteDetailModalProps> = ({
         </div>
 
         {/* Sticky Footer */}
-        <div className="sticky bottom-0 bg-white px-6 py-3 border-t border-[#DCE8DF] flex items-center justify-between">
+        <div className="sticky bottom-0 bg-white px-6 py-3.5 border-t border-[#DCE8DF] flex items-center justify-between">
           <p className="text-xs text-[#68716C] hidden sm:block">
             miabeStory · Plateforme culturelle du Togo
           </p>
           <div className="flex items-center space-x-3 w-full sm:w-auto justify-end">
             <button
               onClick={() => onOpenGuideForSite(site)}
-              className="px-4 py-2 bg-[#174C3C] text-white rounded-xl text-xs font-semibold flex items-center space-x-1.5 shadow-xs cursor-pointer"
+              className="px-4 py-2 bg-[#174C3C] text-white rounded-xl text-xs font-semibold flex items-center space-x-1.5 shadow-xs cursor-pointer hover:bg-[#0f3429]"
             >
               <Bot className="w-4 h-4 text-[#D6A64F]" />
               <span>Interroger l’IA sur ce site</span>
             </button>
             <button
-              onClick={onClose}
+              onClick={handleCloseModal}
               className="px-4 py-2 border border-[#DCE8DF] hover:bg-gray-100 rounded-xl text-xs font-medium text-[#202722] cursor-pointer"
             >
               Fermer
@@ -495,6 +635,33 @@ export const SiteDetailModal: React.FC<SiteDetailModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Lightbox Modal */}
+      {lightboxImg && (
+        <div
+          className="fixed inset-0 z-60 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4"
+          onClick={() => setLightboxImg(null)}
+        >
+          <button
+            onClick={() => setLightboxImg(null)}
+            className="absolute top-6 right-6 p-2 rounded-full bg-white/20 text-white hover:bg-white/40 cursor-pointer"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <div className="max-w-4xl w-full max-h-[80vh] flex flex-col items-center">
+            <img
+              src={lightboxImg.url}
+              alt=""
+              className="max-h-[75vh] max-w-full rounded-2xl object-contain shadow-2xl border border-white/20"
+            />
+            {lightboxImg.caption && (
+              <p className="text-white text-xs sm:text-sm text-center mt-3 max-w-2xl text-emerald-100">
+                {lightboxImg.caption}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -52,7 +52,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           </p>
         </div>
 
-        {/* Region Filter */}
+        {/* Region Filter Dropdown & Counts */}
         <div className="flex items-center space-x-2 bg-white/10 p-1.5 rounded-xl border border-white/20 self-start md:self-auto">
           <Filter className="w-4 h-4 text-[#D6A64F] ml-1" />
           <select
@@ -62,11 +62,38 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           >
             {REGIONS.map((r) => (
               <option key={r} value={r} className="text-[#202722] bg-white">
-                {r}
+                {r} ({r === 'Toutes les régions' ? sites.length : sites.filter((s) => s.region.toLowerCase() === r.toLowerCase()).length})
               </option>
             ))}
           </select>
         </div>
+      </div>
+
+      {/* Quick Region Switcher Buttons Strip */}
+      <div className="bg-[#EDF4EE] px-6 py-2.5 border-b border-[#DCE8DF] flex items-center space-x-2 overflow-x-auto scrollbar-none text-xs">
+        <span className="text-[#174C3C] font-semibold text-[11px] shrink-0 mr-1">Régions :</span>
+        {REGIONS.map((r) => {
+          const count = r === 'Toutes les régions' ? sites.length : sites.filter((s) => s.region.toLowerCase() === r.toLowerCase()).length;
+          const isSelected = regionFilter === r;
+          return (
+            <button
+              key={r}
+              onClick={() => setRegionFilter(r)}
+              className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+                isSelected
+                  ? 'bg-[#174C3C] text-white shadow-2xs font-bold'
+                  : 'bg-white hover:bg-[#DCE8DF] text-[#202722] border border-[#DCE8DF]'
+              }`}
+            >
+              <span>{r}</span>
+              <span className={`ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] ${
+                isSelected ? 'bg-white/20 text-white' : 'bg-[#DCE8DF] text-[#174C3C]'
+              }`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Main Map & Detail Split View */}
@@ -224,25 +251,41 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
                 </p>
               </div>
 
-              {/* Coordinates & Route preparation link */}
+              {/* Distance from Lomé & Coordinates */}
               <div className="bg-[#F7F4EC] p-3.5 rounded-xl border border-[#DCE8DF] space-y-2 text-xs">
+                {selectedSite.distanceFromLome && (
+                  <div className="flex items-center justify-between pb-1.5 border-b border-[#DCE8DF]/60">
+                    <span className="font-semibold text-[#174C3C]">Trajet depuis Lomé :</span>
+                    <span className="font-medium text-[#202722]">{selectedSite.distanceFromLome}</span>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-[#174C3C]">Coordonnées géographiques :</span>
+                  <span className="font-semibold text-[#174C3C]">Coordonnées GPS :</span>
                   <span className="font-mono text-[11px] text-[#68716C]">
                     {selectedSite.coordinates.lat}° N, {selectedSite.coordinates.lng}° E
                   </span>
                 </div>
+
                 <a
                   href={`https://www.google.com/maps/dir/?api=1&destination=${selectedSite.coordinates.lat},${selectedSite.coordinates.lng}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center space-x-1.5 text-xs font-semibold text-[#174C3C] hover:underline"
+                  className="inline-flex items-center space-x-1.5 text-xs font-semibold text-[#174C3C] hover:underline pt-0.5"
                 >
                   <Navigation className="w-3.5 h-3.5 text-[#D6A64F]" />
                   <span>Calculer l'itinéraire avec Google Maps</span>
                   <ExternalLink className="w-3 h-3 text-[#68716C]" />
                 </a>
               </div>
+
+              {/* Cultural Etiquette Notice */}
+              {selectedSite.culturalEtiquette && (
+                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200/80 text-[11px] text-emerald-950 leading-relaxed">
+                  <span className="font-bold text-emerald-900">Éthique de visite : </span>
+                  {selectedSite.culturalEtiquette}
+                </div>
+              )}
 
               {/* Actions */}
               <div className="pt-2 flex flex-col gap-2">

@@ -38,8 +38,11 @@ export const StorytellingPlayer: React.FC<StorytellingPlayerProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSynthesizingTTS, setIsSynthesizingTTS] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [fontSize, setFontSize] = useState<'normal' | 'large' | 'xlarge'>('normal');
+  const [copiedStory, setCopiedStory] = useState(false);
+  const [audioProgress, setAudioProgress] = useState(0);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const progressTimerRef = React.useRef<any>(null);
 
   // Switch versions when style changes
   useEffect(() => {
@@ -61,7 +64,18 @@ export const StorytellingPlayer: React.FC<StorytellingPlayerProps> = ({
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
     }
+    if (progressTimerRef.current) {
+      clearInterval(progressTimerRef.current);
+      progressTimerRef.current = null;
+    }
     setIsPlaying(false);
+    setAudioProgress(0);
+  };
+
+  const handleCopyStory = () => {
+    navigator.clipboard?.writeText(`${storyTitle}\n\n${storyContent}\n\nSource : miabeStory - ${site.name}`);
+    setCopiedStory(true);
+    setTimeout(() => setCopiedStory(false), 2500);
   };
 
   // Generate dynamic story via Gemma backend
@@ -239,39 +253,103 @@ export const StorytellingPlayer: React.FC<StorytellingPlayerProps> = ({
           </button>
 
           <div>
-            <p className="text-xs font-bold text-[#174C3C] flex items-center space-x-1.5">
-              <Volume2 className="w-4 h-4 text-[#D6A64F]" />
-              <span>{isPlaying ? 'Lecture audio en cours...' : 'Écouter le récit'}</span>
-            </p>
+            <div className="flex items-center space-x-2">
+              <p className="text-xs font-bold text-[#174C3C] flex items-center space-x-1.5">
+                <Volume2 className="w-4 h-4 text-[#D6A64F]" />
+                <span>{isPlaying ? 'Lecture vocale en cours' : 'Écouter le récit'}</span>
+              </p>
+              {/* Equalizer Waveform Animation */}
+              {isPlaying && (
+                <div className="flex items-end space-x-0.5 h-3.5 px-1.5 py-0.5 bg-[#174C3C]/10 rounded-md">
+                  <span className="w-1 bg-[#174C3C] rounded-full animate-[bounce_0.6s_infinite_100ms] h-2.5" />
+                  <span className="w-1 bg-[#D6A64F] rounded-full animate-[bounce_0.6s_infinite_300ms] h-3.5" />
+                  <span className="w-1 bg-[#174C3C] rounded-full animate-[bounce_0.6s_infinite_200ms] h-2" />
+                  <span className="w-1 bg-[#D6A64F] rounded-full animate-[bounce_0.6s_infinite_400ms] h-3" />
+                </div>
+              )}
+            </div>
             <p className="text-[11px] text-[#68716C]">
-              {isSynthesizingTTS ? 'Synthèse de la voix haute fidélité...' : `Durée estimée : ~${site.audioDurationMinutes} min`}
+              {isSynthesizingTTS ? 'Synthèse de la voix haute fidélité...' : `Durée estimée : ~${site.audioDurationMinutes} min · Voix française`}
             </p>
           </div>
         </div>
 
-        {/* Speed Controls */}
-        <div className="flex items-center space-x-2 text-xs">
-          <span className="text-[#68716C]">Vitesse :</span>
-          {[0.9, 1, 1.15].map((spd) => (
+        {/* Speed & Font & Copy Controls */}
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          {/* Font Size Scaling */}
+          <div className="flex items-center space-x-1 bg-white p-1 rounded-xl border border-[#DCE8DF]">
             <button
-              key={spd}
-              onClick={() => {
-                setPlaybackSpeed(spd);
-                if (audioRef.current) audioRef.current.playbackRate = spd;
-              }}
-              className={`px-2 py-1 rounded text-xs font-semibold ${
-                playbackSpeed === spd
-                  ? 'bg-[#174C3C] text-white'
-                  : 'bg-white text-[#202722] border border-[#DCE8DF]'
+              onClick={() => setFontSize('normal')}
+              className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
+                fontSize === 'normal' ? 'bg-[#174C3C] text-white' : 'text-[#68716C] hover:text-[#174C3C]'
               }`}
+              title="Taille de texte standard"
             >
-              {spd}x
+              A
             </button>
-          ))}
+            <button
+              onClick={() => setFontSize('large')}
+              className={`px-2 py-0.5 rounded text-[12px] font-semibold ${
+                fontSize === 'large' ? 'bg-[#174C3C] text-white' : 'text-[#68716C] hover:text-[#174C3C]'
+              }`}
+              title="Texte plus grand"
+            >
+              A+
+            </button>
+            <button
+              onClick={() => setFontSize('xlarge')}
+              className={`px-2 py-0.5 rounded text-[13px] font-bold ${
+                fontSize === 'xlarge' ? 'bg-[#174C3C] text-white' : 'text-[#68716C] hover:text-[#174C3C]'
+              }`}
+              title="Texte très grand"
+            >
+              A++
+            </button>
+          </div>
+
+          {/* Speed Controls */}
+          <div className="flex items-center space-x-1 bg-white p-1 rounded-xl border border-[#DCE8DF]">
+            {[0.9, 1, 1.15].map((spd) => (
+              <button
+                key={spd}
+                onClick={() => {
+                  setPlaybackSpeed(spd);
+                  if (audioRef.current) audioRef.current.playbackRate = spd;
+                }}
+                className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                  playbackSpeed === spd
+                    ? 'bg-[#174C3C] text-white'
+                    : 'text-[#202722] hover:bg-gray-100'
+                }`}
+              >
+                {spd}x
+              </button>
+            ))}
+          </div>
+
+          {/* Copy Story Button */}
+          <button
+            onClick={handleCopyStory}
+            className="px-2.5 py-1.5 bg-white hover:bg-gray-50 text-[#174C3C] border border-[#DCE8DF] rounded-xl flex items-center space-x-1 font-medium cursor-pointer shadow-2xs"
+            title="Copier le texte du récit"
+          >
+            {copiedStory ? (
+              <>
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="text-[11px] text-emerald-700 font-bold">Copié !</span>
+              </>
+            ) : (
+              <>
+                <Share2 className="w-3.5 h-3.5 text-[#D6A64F]" />
+                <span className="text-[11px]">Copier le récit</span>
+              </>
+            )}
+          </button>
+
           <button
             onClick={stopAudio}
-            className="p-1.5 text-[#68716C] hover:text-red-600 rounded"
-            title="Arrêter"
+            className="p-1.5 text-[#68716C] hover:text-red-600 rounded-lg hover:bg-white transition-colors"
+            title="Arrêter la lecture"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
@@ -284,7 +362,13 @@ export const StorytellingPlayer: React.FC<StorytellingPlayerProps> = ({
           {paragraphs.map((p, idx) => (
             <p
               key={idx}
-              className="text-base sm:text-lg text-[#202722] leading-relaxed font-serif first-letter:text-4xl first-letter:font-bold first-letter:text-[#174C3C] first-letter:float-left first-letter:mr-2.5 first-letter:leading-none"
+              className={`text-[#202722] leading-relaxed font-serif first-letter:text-4xl first-letter:font-bold first-letter:text-[#174C3C] first-letter:float-left first-letter:mr-2.5 first-letter:leading-none ${
+                fontSize === 'xlarge'
+                  ? 'text-xl sm:text-2xl leading-loose'
+                  : fontSize === 'large'
+                  ? 'text-lg sm:text-xl leading-relaxed'
+                  : 'text-base sm:text-lg leading-relaxed'
+              }`}
             >
               {p}
             </p>
